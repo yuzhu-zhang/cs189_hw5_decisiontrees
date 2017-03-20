@@ -5,6 +5,9 @@ from sklearn import preprocessing
 from sklearn import feature_extraction
 
 
+
+#: Some helper functions
+
 #: modified log2 function to account for when proportion == 0
 def log2_modified(proportion):
     if proportion == 0:
