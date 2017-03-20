@@ -24,9 +24,17 @@ class Node(object):
         self.label = label
 
 class DecisionTree(object):
-    def __init__(self):
+
+    def __init__(self, isBinaryFeature=None):
+        """
+
+        :param isBinaryFeature: list of length numFeatures; indices: featureIndex ; value: True if i'th feature is a binary feature
+        """
         self.rootNode = None
-        self.isBinaryFeature = []
+        if isBinaryFeature is None:
+            self.isBinaryFeature = []
+        else:
+            self.isBinaryFeature = isBinaryFeature
 
     @staticmethod
     def pureSet(labels):
