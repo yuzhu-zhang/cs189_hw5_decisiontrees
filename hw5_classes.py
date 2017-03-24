@@ -30,7 +30,7 @@ class Node(object):
 
 class DecisionTree(object):
 
-    def __init__(self, isBinaryFeature, useRandomSubsetOfFeatures=False):
+    def __init__(self, isBinaryFeature, useRandomSubsetOfFeatures=False, maxDepth=10):
         """
 
         :param isBinaryFeature: list of length numFeatures; indices: featureIndex ; value: True if i'th feature is a binary feature
@@ -39,7 +39,7 @@ class DecisionTree(object):
         self.isBinaryFeature = isBinaryFeature
         self.useRandomSubsetOfFeatures = useRandomSubsetOfFeatures #for random forest functionality
 
-        self.maxDepth = 20
+        self.maxDepth = maxDepth
 
     @staticmethod
     def pureSet(labels):
@@ -138,7 +138,7 @@ class DecisionTree(object):
         if not self.useRandomSubsetOfFeatures:
             features = np.arange(numFeatures)
         else:
-            pass #@@@ add here when implementing random forest
+            features = np.random.choice(np.arange(numFeatures), int(np.ceil(numFeatures**0.5)), replace=False)
 
         for i in features:
             left_label_hist = np.array([0, 0])
@@ -148,16 +148,10 @@ class DecisionTree(object):
                 sorted_vals = np.sort(data[:, i])
                 indices = np.argsort(data[:, i])
 
-
-                pass #@@@
-
                 j = 0
                 currentStartVal = None # keep track of this through the 'while' loop so we can handle repeated vals
                 numSamples = sorted_vals.shape[0]
                 while j < numSamples:
-
-                    if sorted_vals[j] != 0: #@@@
-                        pass
 
                     #: try to add all repeated elements into left hist
                     currentStartVal = sorted_vals[j-1]
@@ -213,9 +207,7 @@ class DecisionTree(object):
         else:
             split_rule = self.segmenter(data, labels)
             left_data, left_labels, right_data, right_labels = DecisionTree.split(split_rule, data, labels)
-            print 'depth: ', depth, '; purity: ', purity, '; #leftlabels: ', left_labels.shape[0], '; #rightlabels: ', right_labels.shape[0]
-            if left_labels.shape[0] == 0: #@@@ debugging
-                pass
+            # print 'depth: ', depth, '; purity: ', purity, '; #leftlabels: ', left_labels.shape[0], '; #rightlabels: ', right_labels.shape[0] #@@@
 
             return Node(split_rule, self.growTree(left_data, left_labels, depth + 1), self.growTree(right_data, right_labels, depth + 1), purity=purity)
 
@@ -236,9 +228,43 @@ class DecisionTree(object):
 
 
 class RandomForest(object):
-    def __init__(self, numTrees=30):
+    def __init__(self, isBinaryFeature, numTrees=10, maxDepth=10):
         self.numTrees = numTrees
+        self.isBinaryFeature = isBinaryFeature
         self.trees = []
+        self.maxDepth = maxDepth
 
     def train(self, data, labels):
-        pass
+        for i in np.arange(self.numTrees):
+            print 'Creating tree ', i
+
+            tree = DecisionTree(self.isBinaryFeature, useRandomSubsetOfFeatures=True, maxDepth=self.maxDepth)
+
+            numSamples = data.shape[0]
+            numFeatures = data.shape[1]
+
+            #: create random subset of the data
+            sampledIndices = np.random.choice(np.arange(numSamples), numSamples, replace=True) #here, n == n'
+            data_new = np.zeros((0, numFeatures))
+            labels_new_lst = []
+
+            for j in sampledIndices:
+                data_new = np.vstack((data_new, data[j, :]))
+                labels_new_lst += [labels[j]]
+            labels_new = np.array(labels_new_lst)
+
+            tree.train(data_new, labels_new)
+
+            self.trees += [tree]
+
+    def predict(self, data):
+        numSamples = data.shape[0]
+
+        predictedLabels_allTrees = np.zeros((self.numTrees, numSamples))
+
+        for i in np.arange(len(self.trees)):
+            predictedLabels_allTrees[i, :] = self.trees[i].predict(data)
+
+        predictedLabels = np.round(predictedLabels_allTrees.mean(0))
+
+        return predictedLabels
